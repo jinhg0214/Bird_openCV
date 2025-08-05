@@ -1,0 +1,32 @@
+# config/app_config.yaml
+
+# 카메라 및 프레임 설정
+camera:
+  frame_width: 1920
+  frame_height: 1080
+  resize_width: 640
+  resize_height: 360
+
+# 감지 로직 설정
+detection:
+  capture_interval: 5                 # 움직임 감지 후 분석 큐에 넣는 최소 간격 (초)
+  firebase_upload_cooldown: 300       # 새 탐지 후 Firebase 업로드 최소 간격 (초) - 5분
+  min_area: 500                       # 움직임 인식 최소 면적
+
+# 배경 차분 설정
+background_subtraction:
+  history: 500                        # 배경 학습 프레임 수
+  threshold: 50                       # 배경 차이 민감도
+
+# YOLO 모델 설정
+yolo:
+  confidence_threshold: 0.5           # YOLO confidence threshold
+  # 모델이 탐지할 수 있는 새 종류 목록 (YOLO 모델의 실제 라벨과 일치해야 함)
+  valid_bird_species:
+    - "Brown-eared bulbul"
+    - "Cinereous Tit"
+    - "Common kestrel"
+    - "Crow"
+    - "Eurasian tree sparrow"
+    - "Oriental Magpie"
+    - "Pigeon"

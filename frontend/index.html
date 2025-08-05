@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bird Detection Dashboard</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/vue@3"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        body { 
+            background-color: #f8f9fa; 
+            padding-top: 56px; /* Fixed navbar height */
+        }
+        .navbar-brand {
+            font-weight: 600;
+        }
+        .sidebar {
+            position: fixed;
+            top: 56px; /* Align below the navbar */
+            left: 0;
+            height: calc(100% - 56px);
+            width: 280px;
+            padding: 1rem;
+            background-color: #fff;
+            border-right: 1px solid #dee2e6;
+            overflow-y: auto;
+        }
+        .main-content {
+            margin-left: 280px;
+            padding: 1rem;
+        }
+        .right-sidebar {
+            position: fixed;
+            top: 56px; /* Align below the navbar */
+            right: 0;
+            height: calc(100% - 56px);
+            width: 320px;
+            padding: 1rem;
+            background-color: #fff;
+            border-left: 1px solid #dee2e6;
+            overflow-y: auto;
+        }
+        .content-area {
+            margin-right: 320px;
+        }
+        .card-img-top {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+        }
+
+        /* Responsive layout for smaller screens */
+        @media (max-width: 992px) {
+            .sidebar, .right-sidebar {
+                position: relative;
+                width: 100%;
+                height: auto;
+                border: none;
+                margin-bottom: 1rem;
+                padding-bottom: 1rem;
+                border-bottom: 1px solid #dee2e6;
+                top: 0;
+            }
+            .main-content {
+                margin-left: 0;
+                width: 100%;
+            }
+            .content-area {
+                margin-right: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Top Navbar -->
+        <nav class="navbar navbar-expand-lg navbar-dark shadow-sm fixed-top" style="background-color: #1e293b;">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="#">새 모니터링 대시보드</a>
+                <div class="d-flex align-items-center text-white ms-auto">
+                    <span class="me-2 small">실시간 업데이트</span>
+                    <span v-if="isConnected" class="badge bg-success">연결됨</span>
+                    <span v-else class="badge bg-danger">연결 끊김</span>
+                </div>
+            </div>
+        </nav>
+
+        <left-sidebar :selected-date-filter="selectedDateFilter" :available-species="availableSpecies" :species-counts="speciesCounts" :selected-species="selectedSpecies" @update:selected-date-filter="selectedDateFilter = $event" @update:selected-species="selectedSpecies = $event"></left-sidebar>
+        <main-content :todays-visitors="todaysVisitors" :most-frequent-bird-today="mostFrequentBirdToday"></main-content>
+        <right-sidebar :loading="loading" :recent-birds="recentBirds" @delete-detection="deleteDetection"></right-sidebar>
+    </div>
+
+    <script src="firebase-config.js"></script>
+    <script>
+        const firebaseApp = firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        const app = Vue.createApp({
+            data() {
+                return {
+                    allBirds: [],
+                    loading: true,
+                    isConnected: false, // Initially not connected
+                    selectedDateFilter: 'all',
+                    selectedSpecies: [],
+                }
+            },
+            computed: {
+                availableSpecies() {
+                    return [...new Set(this.allBirds.map(b => b.species))].sort();
+                },
+                filteredBirds() {
+                    let birds = this.allBirds;
+
+                    // Date filter
+                    const now = new Date();
+                    birds = birds.filter(b => {
+                        let detectionDate;
+                        if (typeof b.timestamp === 'object' && b.timestamp.seconds) {
+                            detectionDate = new Date(b.timestamp.seconds * 1000);
+                        } else {
+                            detectionDate = new Date(b.timestamp);
+                        }
+
+                        if (isNaN(detectionDate.getTime())) return false; // 유효하지 않은 날짜는 필터링
+
+                        if (this.selectedDateFilter === 'today') {
+                            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                            return detectionDate >= today;
+                        } else if (this.selectedDateFilter === 'last7days') {
+                            const sevenDaysAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+                            return detectionDate >= sevenDaysAgo;
+                        }
+                        return true; // 'all' 필터
+                    });
+
+                    // Species filter
+                    if (this.selectedSpecies.length > 0) {
+                        birds = birds.filter(b => this.selectedSpecies.includes(b.species));
+                    }
+
+                    return birds;
+                },
+                speciesCounts() {
+                    // speciesCounts는 이제 filteredBirds를 기반으로 계산됩니다.
+                    return this.filteredBirds.reduce((acc, bird) => {
+                        acc[bird.species] = (acc[bird.species] || 0) + 1;
+                        return acc;
+                    }, {});
+                },
+                recentBirds() {
+                    return this.filteredBirds.slice(0, 5);
+                },
+                todaysVisitors() {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    
+                    const todaysDetections = this.filteredBirds.filter(bird => {
+                        let detectionDate;
+                        if (typeof bird.timestamp === 'object' && bird.timestamp.seconds) {
+                            detectionDate = new Date(bird.timestamp.seconds * 1000);
+                        } else {
+                            detectionDate = new Date(bird.timestamp);
+                        }
+                        return !isNaN(detectionDate.getTime()) && detectionDate >= today;
+                    });
+                    return new Set(todaysDetections.map(b => b.species)).size;
+                },
+                mostFrequentBirdToday() {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+
+                    const todaysDetections = this.filteredBirds.filter(bird => {
+                        let detectionDate;
+                        if (typeof bird.timestamp === 'object' && bird.timestamp.seconds) {
+                            detectionDate = new Date(bird.timestamp.seconds * 1000);
+                        } else {
+                            detectionDate = new Date(bird.timestamp);
+                        }
+                        return !isNaN(detectionDate.getTime()) && detectionDate >= today;
+                    });
+
+                    if (todaysDetections.length === 0) {
+                        return '아직 안왔음!';
+                    }
+
+                    const speciesCounts = todaysDetections.reduce((acc, bird) => {
+                        acc[bird.species] = (acc[bird.species] || 0) + 1;
+                        return acc;
+                    }, {});
+
+                    return Object.keys(speciesCounts).reduce((a, b) => speciesCounts[a] > speciesCounts[b] ? a : b);
+                }
+            },
+            mounted() {
+                this.hourlyChart = null;
+                this.speciesChart = null;
+
+                const detectionsRef = db.collection("detections");
+
+                this.unsubscribe = detectionsRef.orderBy("timestamp", "desc").onSnapshot(snapshot => {
+                    this.allBirds = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    this.loading = false;
+                    this.isConnected = true; // Connected
+                    // Set default species filter to all available species initially
+                    if (this.selectedSpecies.length === 0) {
+                        this.selectedSpecies = this.availableSpecies;
+                    }
+                    this.renderCharts();
+                }, error => {
+                    console.error("Error fetching snapshot: ", error);
+                    this.isConnected = false; // Disconnected on error
+                });
+            },
+            watch: {
+                selectedDateFilter: 'renderCharts',
+                selectedSpecies: {
+                    handler: 'renderCharts',
+                    deep: true
+                }
+            },
+            methods: {
+                deleteDetection(docId) {
+                    if (!confirm("정말로 이 데이터를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) {
+                        return;
+                    }
+
+                    const functionUrl = 'https://us-central1-bird-recog-project.cloudfunctions.net/delete_detection';
+
+                    fetch(functionUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ docId: docId })
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.text();
+                    })
+                    .then(data => {
+                        console.log('Function response:', data);
+                        // 성공적으로 삭제되면 화면에서도 즉시 반영됩니다.
+                        // (onSnapshot이 자동으로 목록을 갱신해줍니다)
+                        alert("데이터가 성공적으로 삭제되었습니다.");
+                    })
+                    .catch(error => {
+                        console.error('Error calling delete function:', error);
+                        alert("데이터 삭제 중 오류가 발생했습니다.");
+                    });
+                },
+                renderCharts() {
+                    this.$nextTick(() => {
+                        this.renderHourlyActivityChart();
+                        this.renderSpeciesDistributionChart();
+                    });
+                },
+                renderHourlyActivityChart() {
+                    const ctx = document.getElementById('hourlyActivityChart').getContext('2d');
+                    const hourlyCounts = Array(24).fill(0);
+
+                    this.filteredBirds.forEach(bird => {
+                        let dateObject;
+                        if (typeof bird.timestamp === 'object' && bird.timestamp.seconds) {
+                            dateObject = new Date(bird.timestamp.seconds * 1000);
+                        } else {
+                            dateObject = new Date(bird.timestamp);
+                        }
+                        
+                        if (!isNaN(dateObject.getTime())) { // 유효한 날짜인지 확인
+                            const hour = dateObject.getHours();
+                            hourlyCounts[hour]++;
+                        }
+                    });
+
+                    if (this.hourlyChart) {
+                        // 차트가 이미 존재하면 데이터만 업데이트
+                        this.hourlyChart.data.datasets[0].data = hourlyCounts;
+                        this.hourlyChart.update();
+                    } else {
+                        // 차트가 없으면 새로 생성
+                        this.hourlyChart = new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+                                datasets: [{
+                                    label: 'Detections',
+                                    data: hourlyCounts,
+                                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                                    borderColor: 'rgba(75, 192, 192, 1)',
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        ticks: {
+                                            stepSize: 1, // y축 레이블을 1단위로 표시하여 정수로 만듦
+                                            callback: function(value) {
+                                                if (Number.isInteger(value)) {
+                                                    return value;
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                responsive: true,
+                                maintainAspectRatio: false
+                            }
+                        });
+                    }
+                },
+                renderSpeciesDistributionChart() {
+                    const ctx = document.getElementById('speciesDistributionChart').getContext('2d');
+                    const speciesCounts = this.filteredBirds.reduce((acc, bird) => {
+                        acc[bird.species] = (acc[bird.species] || 0) + 1;
+                        return acc;
+                    }, {});
+
+                    const labels = Object.keys(speciesCounts);
+                    const data = Object.values(speciesCounts);
+
+                    if (this.speciesChart) {
+                        // 차트가 이미 존재하면 데이터만 업데이트
+                        this.speciesChart.data.labels = labels;
+                        this.speciesChart.data.datasets[0].data = data;
+                        this.speciesChart.update();
+                    } else {
+                        // 차트가 없으면 새로 생성
+                        this.speciesChart = new Chart(ctx, {
+                            type: 'doughnut',
+                            data: {
+                                labels: labels,
+                                datasets: [{
+                                    data: data,
+                                    backgroundColor: [
+                                        'rgba(255, 99, 132, 0.2)',
+                                        'rgba(54, 162, 235, 0.2)',
+                                        'rgba(255, 206, 86, 0.2)',
+                                        'rgba(75, 192, 192, 0.2)',
+                                        'rgba(153, 102, 255, 0.2)',
+                                        'rgba(255, 159, 64, 0.2)'
+                                    ],
+                                    borderColor: [
+                                        'rgba(255, 99, 132, 1)',
+                                        'rgba(54, 162, 235, 1)',
+                                        'rgba(255, 206, 86, 1)',
+                                        'rgba(75, 192, 192, 1)',
+                                        'rgba(153, 102, 255, 1)',
+                                        'rgba(255, 159, 64, 1)'
+                                    ],
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false
+                            }
+                        });
+                    }
+                }
+            }
+        });
+
+        // Dynamically load and register components
+        const loadComponent = (url, componentName) => {
+            return fetch(url)
+                .then(response => response.text())
+                .then(html => {
+                    let component = {
+                        template: html,
+                        props: ['selectedDateFilter', 'availableSpecies', 'speciesCounts', 'selectedSpecies', 'todaysVisitors', 'mostFrequentBirdToday', 'loading', 'recentBirds']
+                    };
+
+                    if (componentName === 'left-sidebar') {
+                        component.methods = {
+                            updateSpecies(species) {
+                                const newSelectedSpecies = [...this.selectedSpecies];
+                                const index = newSelectedSpecies.indexOf(species);
+                                if (index > -1) {
+                                    newSelectedSpecies.splice(index, 1);
+                                } else {
+                                    newSelectedSpecies.push(species);
+                                }
+                                return newSelectedSpecies;
+                            }
+                        };
+                    }
+
+                    app.component(componentName, component);
+                });
+        };
+
+        Promise.all([
+            loadComponent('left-sidebar.html', 'left-sidebar'),
+            loadComponent('main-content.html', 'main-content'),
+            loadComponent('right-sidebar.html', 'right-sidebar')
+        ]).then(() => {
+            app.mount('#app');
+        });
+    </script>
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

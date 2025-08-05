@@ -1,0 +1,49 @@
+<!-- Main Content -->
+<div class="main-content content-area">
+    <!-- Dashboard Metrics & Charts -->
+    <div class="row">
+        <!-- Today's Visitors Card -->
+        <div class="col-md-6 mb-4">
+            <div class="card text-center h-100">
+                <div class="card-body d-flex flex-column justify-content-center">
+                    <h5 class="card-title"><i class="bi bi-person-check-fill me-2"></i>오늘 방문한 새 (종)</h5>
+                    <p class="card-text fs-1 fw-bold">{{ todaysVisitors }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Most Frequent Bird Today Card -->
+        <div class="col-md-6 mb-4">
+            <div class="card text-center h-100">
+                <div class="card-body d-flex flex-column justify-content-center">
+                    <h5 class="card-title"><i class="bi bi-trophy-fill me-2"></i>오늘 가장 많이 방문한 새</h5>
+                    <p class="card-text fs-1 fw-bold text-capitalize">{{ mostFrequentBirdToday }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hourly Activity Chart Card -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">시간별 활동량</h5>
+                    <div class="flex-grow-1" style="position: relative;">
+                        <canvas id="hourlyActivityChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Species Distribution Chart Card -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">감지된 새 종류</h5>
+                    <div class="flex-grow-1" style="position: relative;">
+                        <canvas id="speciesDistributionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

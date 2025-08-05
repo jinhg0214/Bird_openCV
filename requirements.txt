@@ -1,0 +1,28 @@
+# Project-wide requirements for Bird Detection
+# Usage: pip install -r requirements.txt
+
+# Base YOLOv5 dependencies (copied from yolov5/requirements.txt)
+gitpython>=3.1.30
+matplotlib>=3.3
+numpy>=1.23.5
+opencv-python>=4.1.1
+pillow>=10.3.0
+psutil
+PyYAML>=5.3.1
+requests>=2.32.2
+scipy>=1.4.1
+thop>=0.1.1
+torch>=1.8.0
+torchvision>=0.9.0
+tqdm>=4.66.3
+ultralytics>=8.2.34
+setuptools>=70.0.0
+
+# Additional dependencies for main.py
+firebase-admin>=6.0.0
+
+# Future dependencies for backend (e.g., Flask, FastAPI)
+# # Flask
+# # Flask-RESTful
+
+# Future dependencies for frontend (e.g., Node.js, npm/yarn - managed separately)

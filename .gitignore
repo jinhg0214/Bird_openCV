@@ -1,0 +1,12 @@
+yolo5/venv
+.gemini/
+yolov5/
+*.json
+service-account-key.json
+frontend/firebase-config.js
+
+# Python cache files
+__pycache__/
+
+# Firebase internal files
+.firebase/

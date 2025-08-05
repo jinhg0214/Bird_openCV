@@ -1,0 +1,50 @@
+<!-- Left Sidebar for Filters -->
+<div class="sidebar">
+    <h4 class="mb-4"><i class="bi bi-search me-2"></i>필터</h4>
+
+    <div class="accordion" id="filterAccordion">
+        <!-- Date Filter Card -->
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="headingOne">
+                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                    <i class="bi bi-calendar-event me-2"></i>날짜 선택
+                </button>
+            </h2>
+            <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#filterAccordion">
+                <div class="accordion-body">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="dateFilter" id="all" value="all" :checked="selectedDateFilter === 'all'" @change="$emit('update:selectedDateFilter', 'all')">
+                        <label class="form-check-label" for="all">전체</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="dateFilter" id="today" value="today" :checked="selectedDateFilter === 'today'" @change="$emit('update:selectedDateFilter', 'today')">
+                        <label class="form-check-label" for="today">오늘</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="dateFilter" id="last7days" value="last7days" :checked="selectedDateFilter === 'last7days'" @change="$emit('update:selectedDateFilter', 'last7days')">
+                        <label class="form-check-label" for="last7days">최근 7일</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Species Filter Card -->
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="headingTwo">
+                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="true" aria-controls="collapseTwo">
+                    <i class="bi bi-feather me-2"></i>새 종류
+                </button>
+            </h2>
+            <div id="collapseTwo" class="accordion-collapse collapse show" aria-labelledby="headingTwo" data-bs-parent="#filterAccordion">
+                <div class="accordion-body">
+                    <div class="form-check" v-for="species in availableSpecies" :key="species">
+                        <input class="form-check-input" type="checkbox" :value="species" :id="species" :checked="selectedSpecies.includes(species)" @change="$emit('update:selectedSpecies', updateSpecies($event.target.value))">
+                        <label class="form-check-label text-capitalize" :for="species">
+                            {{ species }} ({{ speciesCounts[species] || 0 }})
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
