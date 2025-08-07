@@ -144,7 +144,9 @@ pip install -r requirements.txt
 *   **보안 주의:** 다운로드한 키 파일은 **절대 Git에 커밋하면 안됨!!!!!!** (`.gitignore`에 `*.json` 추가 필수)
 
 **4. 서비스 계정 키 설정 (중요)**
-다운로드한 `.json` 키 파일의 경로를 **환경 변수**로 설정해야 합니다. 이는 소스 코드에 민감한 정보를 직접 하드코딩하는 것을 방지하기 위함입니다.
+다운로드한 `.json` 키 파일의 경로를 **환경 변수**로 설정해야함
+
+이는 소스 코드에 민감한 정보를 직접 하드코딩하는 것을 방지하기 위함
 
 **Linux / macOS:**
 ```bash
@@ -156,7 +158,7 @@ export GOOGLE_APPLICATION_CREDENTIALS="/path/to/your/serviceAccountKey.json"
 $env:GOOGLE_APPLICATION_CREDENTIALS="C:\path\to\your\serviceAccountKey.json"
 ```
 
-> 또는, `src/firebase_manager.py` 파일에서 `cred = credentials.Certificate(os.getenv('GOOGLE_APPLICATION_CREDENTIALS'))` 라인을 `cred = credentials.Certificate("your/key/path.json")` 과 같이 직접 수정할 수도 있으나, 보안상 권장되지 않습니다.
+> 또는, `src/firebase_manager.py` 파일에서 `cred = credentials.Certificate(os.getenv('GOOGLE_APPLICATION_CREDENTIALS'))` 라인을 `cred = credentials.Certificate("your/key/path.json")` 과 같이 직접 수정할 수도 있으나, 보안상 권장되지 않음
 
 **5. 프로그램 실행**
 ```bash
